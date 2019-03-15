@@ -5,6 +5,8 @@ import "@contentful/forma-36-react-components/dist/styles.css"
 
 import { Spinner } from "@contentful/forma-36-react-components"
 import { init } from "contentful-ui-extensions-sdk"
+import debounce from "debounce-fn"
+
 import UploadView from "./components/UploadView"
 import ProgressView from "./components/ProgressView"
 import FileView from "./components/FileView"
@@ -25,6 +27,19 @@ class App extends React.Component {
     value: this.props.sdk.field.getValue()
   }
 
+  constructor(props) {
+    super(props)
+    this.onOtherLocalesChange = debounce(this.onOtherLocalesChange, {
+      wait: 1000
+    })
+  }
+
+  componentWillUpdate() {
+    this.setState({
+      hideLinkExistingButton: !!this.findExistingAssetReference()
+    })
+  }
+
   componentDidMount() {
     this.props.sdk.window.startAutoResizer()
 
@@ -33,12 +48,14 @@ class App extends React.Component {
       this.onExternalChange
     )
 
-    if (this.state.value) {
-      this.props.sdk.space
-        .getAsset(this.state.value.sys.id)
-        .then(asset => this.setState({ asset }))
-        .catch(this.onError)
-    }
+    this.getOtherLocaleReferences().forEach(ref => {
+      this.getRootField().onValueChanged(
+        ref.locale,
+        this.onOtherLocalesChange.bind(this, ref.locale)
+      )
+    })
+
+    this.loadLinkedAsset()
   }
 
   componentWillUpdate(_, nextState) {}
@@ -85,6 +102,8 @@ class App extends React.Component {
       locale: this.props.sdk.field.locale
     })
 
+    if (!selectedAsset) return
+
     try {
       await this.setFieldLink(selectedAsset.sys.id)
     } catch (err) {
@@ -114,6 +133,15 @@ class App extends React.Component {
 
   onExternalChange = value => {
     this.setState({ value })
+  }
+
+  onOtherLocalesChange = (locale, value) => {
+    console.log("[locale change]", locale, value)
+
+    this.loadLinkedAsset()
+    this.setState({
+      hideLinkExistingButton: this.findExistingAssetReference()
+    })
   }
 
   /*
@@ -169,9 +197,10 @@ class App extends React.Component {
     ```
    */
   findExistingAssetReference = () => {
-    const allReferenceValues = this.getOtherLocales().filter(
+    const allReferenceValues = this.getOtherLocaleReferences().filter(
       reference => reference.value
     )
+
     if (allReferenceValues.length === 0) {
       return null
     }
@@ -199,14 +228,12 @@ class App extends React.Component {
     an array and filter the current locale.
 
     ```
-    getOtherLocales() { value: ReferenceEntity, locale: string, isDefault: boolean }[]
+    getOtherLocaleReferences() { value: ReferenceEntity, locale: string, isDefault: boolean }[]
     ```
   */
-  getOtherLocales = () => {
+  getOtherLocaleReferences = () => {
     const currentField = this.props.sdk.field
-
-    // Root field refers to the container of all localized instances of ImageUploader.
-    const rootField = this.props.sdk.entry.fields[currentField.id]
+    const rootField = this.getRootField()
 
     return rootField.locales
       .map(locale => {
@@ -217,6 +244,15 @@ class App extends React.Component {
         }
       })
       .filter(field => field.locale !== currentField.locale)
+  }
+
+  /*
+     Root field refers to the container of all localized instances of ImageUploader.
+
+     `getRootField(): FieldEntity`
+   */
+  getRootField = () => {
+    return this.props.sdk.entry.fields[this.props.sdk.field.id]
   }
 
   /*
@@ -351,7 +387,7 @@ class App extends React.Component {
       })
       .then(() =>
         this.props.sdk.space
-          .getAsset(this.state.value.sys.id)
+          .getAsset(assetId)
           .then(asset => this.setState({ asset }))
       )
   }
@@ -361,6 +397,17 @@ class App extends React.Component {
       uploading: percent < 100,
       uploadProgress: percent
     })
+  }
+
+  loadLinkedAsset = () => {
+    if (!this.state.value) {
+      return Promise.resolve()
+    }
+
+    return this.props.sdk.space
+      .getAsset(this.state.value.sys.id)
+      .then(asset => this.setState({ asset }))
+      .catch(this.onError)
   }
 
   render = () => {
@@ -406,6 +453,7 @@ class App extends React.Component {
         onDragOverStart={this.onDragOverStart}
         onDragOverEnd={this.onDragOverEnd}
         onClickLinkExisting={this.onClickLinkExisting}
+        hideLinkExistingButton={this.state.hideLinkExistingButton}
       />
     )
   }

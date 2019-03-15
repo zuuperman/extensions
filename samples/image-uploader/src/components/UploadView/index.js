@@ -39,12 +39,14 @@ export default function UploadView(props) {
               />
               Select files
             </Button>
-            <TextLink
-              extraClassNames="link-existing"
-              onClick={props.onClickLinkExisting}
-            >
-              Link existing asset
-            </TextLink>
+            {!props.hideLinkExistingButton ? (
+              <TextLink
+                extraClassNames="link-existing"
+                onClick={props.onClickLinkExisting}
+              >
+                Link existing asset
+              </TextLink>
+            ) : null}
           </nav>
         ) : null}
       </main>
