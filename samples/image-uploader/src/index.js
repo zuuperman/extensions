@@ -273,7 +273,9 @@ class App extends React.Component {
     ```
    */
   removeUploadOrAsset = () => {
-    if (this.getOtherLocaleReferences().length === 0) {
+    const otherLocaleRefs = this.getOtherLocaleReferences()
+
+    if (otherLocaleRefs.length === 0 || otherLocaleRefs.every(l => !l.value)) {
       // No locales. Just unlink and set the field value to null.
       this.props.sdk.field.setValue(null)
       return this.setState({

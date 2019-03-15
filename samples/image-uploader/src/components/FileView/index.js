@@ -26,7 +26,9 @@ export default function FileView(props) {
       onDragOverStart={props.onDragOverStart}
       onDragOverEnd={props.onDragOverEnd}
     >
-      <header style={bg} />
+      <header className="centered">
+        <img src={file.url} />
+      </header>
       <section className="details">
         <main>
           <Heading extraClassNames="filename">

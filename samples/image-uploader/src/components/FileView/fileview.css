@@ -9,6 +9,14 @@
   background-size: contain;
 }
 
+.file-view header img {
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
 .file-view .details .filename {
   margin-bottom: 0.5rem;
 }
