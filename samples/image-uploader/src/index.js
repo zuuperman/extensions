@@ -468,6 +468,7 @@ class App extends React.Component {
     } else if (
       !this.state.isDraggingOver &&
       this.state.asset &&
+      this.state.asset.fields.file &&
       this.state.asset.fields.file[this.props.sdk.field.locale]
     ) {
       // Display existing asset if user is not dragging over an image and the asset has file for current locale
