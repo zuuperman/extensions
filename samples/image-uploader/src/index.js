@@ -111,12 +111,12 @@ class App extends React.Component {
     }
   }
 
-  onClickRemove = () => {
-    this.props.sdk.field.setValue(null)
-    this.setState({
-      value: null,
-      asset: null
-    })
+  onClickRemove = async () => {
+    try {
+      await this.removeUploadOrAsset()
+    } catch (err) {
+      this.onError(err)
+    }
   }
 
   onDragOverEnd = () => {
@@ -136,8 +136,6 @@ class App extends React.Component {
   }
 
   onOtherLocalesChange = (locale, value) => {
-    console.log("[locale change]", locale, value)
-
     this.loadLinkedAsset()
     this.setState({
       hideLinkExistingButton: this.findExistingAssetReference()
@@ -268,6 +266,36 @@ class App extends React.Component {
   }
 
   /*
+    If there is multiple locales, we remove the upload. If there is no locales, we just unlink from the asset.
+
+    ```
+    removeUploadOrAsset() Promise<void>
+    ```
+   */
+  removeUploadOrAsset = () => {
+    if (this.getOtherLocaleReferences().length === 0) {
+      // No locales. Just unlink and set the field value to null.
+      this.props.sdk.field.setValue(null)
+      return this.setState({
+        value: null,
+        asset: null
+      })
+    }
+
+    // Find out the asset reference that we'll update.
+    const existing = this.findExistingAssetReference()
+
+    return this.props.sdk.space
+      .getAsset(existing.value.sys.id)
+      .then(asset =>
+        this.props.sdk.space.updateAsset(
+          this.setAssetUploadAsEmpty(asset, this.props.sdk.field.locale)
+        )
+      )
+      .then(this.loadLinkedAsset)
+  }
+
+  /*
     Take an asset object, set its required localized file and upload fields. It's used by
     `createAsset` and `createOrUpdateAsset` methods.
 
@@ -294,6 +322,22 @@ class App extends React.Component {
       }
     }
 
+    return copy
+  }
+
+  /*
+    In case user has multiple locales, remove the file from asset for current locale, instead of just unlinking from the asset
+
+    ```
+    setAssetUploadAsEmpty(asset: AssetEntity, locale: string)
+    ```
+  */
+  setAssetUploadAsEmpty = (asset, locale) => {
+    const copy = {
+      ...asset
+    }
+
+    delete copy.fields.file[locale]
     return copy
   }
 
@@ -419,8 +463,12 @@ class App extends React.Component {
           uploadProgress={this.state.uploadProgress}
         />
       )
-    } else if (!this.state.isDraggingOver && this.state.asset) {
-      // Display existing asset if user is not dragging over an image
+    } else if (
+      !this.state.isDraggingOver &&
+      this.state.asset &&
+      this.state.asset.fields.file[this.props.sdk.field.locale]
+    ) {
+      // Display existing asset if user is not dragging over an image and the asset has file for current locale
       return (
         <FileView
           file={this.state.asset.fields.file[this.props.sdk.field.locale]}
@@ -436,7 +484,11 @@ class App extends React.Component {
           onClickRemove={this.onClickRemove}
         />
       )
-    } else if (!this.state.isDraggingOver && this.state.value) {
+    } else if (
+      !this.state.isDraggingOver &&
+      this.state.value &&
+      !this.state.asset
+    ) {
       // If `asset` is not set but `value` is, the entry was just opened
       // and we're currently loading the asset value.
       return (
