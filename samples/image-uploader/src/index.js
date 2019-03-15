@@ -117,37 +117,151 @@ class App extends React.Component {
   }
 
   /*
-     Create a new (unprocessed) asset entry for given upload and file.
+    Check if an existing Asset was created for another locale, or create a new one.
 
-     createAsset(upload: UploadEntity, file: File): Promise<AssetEntity>
+    ```
+    getOrCreateAsset(upload: UploadEntity, file: File) Promise<AssetEntity>
+    ```
   */
-  createAsset = (upload, file) => {
-    return this.props.sdk.space.createAsset({
-      fields: {
-        title: {
-          "en-US": trimFilename(file.name, MAX_ASSET_TITLE_LEN)
-        },
-        description: {
-          "en-US": ""
-        },
-        file: {
-          "en-US": {
-            contentType: file.type,
-            fileName: file.name,
-            uploadFrom: {
-              sys: {
-                type: "Link",
-                linkType: "Upload",
-                id: upload.sys.id
-              }
-            }
-          }
-        }
-      }
-    })
+  createOrUpdateAsset = (upload, file) => {
+    const existing = this.findExistingAssetReference()
+    if (!existing) {
+      return this.createAsset(upload, file)
+    }
+
+    return this.props.sdk.space
+      .getAsset(existing.value.sys.id)
+      .then(asset =>
+        this.props.sdk.space.updateAsset(
+          this.setAssetUpload(asset, upload, file, this.props.sdk.field.locale)
+        )
+      )
   }
 
-  /* `uploadNewAsset(file: File): void` takes an HTML5 File object
+  /*
+     Create a new (unprocessed) asset entry for given upload and file.
+
+     ```
+     createAsset(upload: UploadEntity, file: File): Promise<AssetEntity>
+     ```
+  */
+  createAsset = (upload, file) => {
+    const emptyAsset = {
+      fields: {
+        title: {},
+        description: {},
+        file: {}
+      }
+    }
+
+    return this.props.sdk.space.createAsset(
+      this.setAssetUpload(emptyAsset, upload, file, this.props.sdk.field.locale)
+    )
+  }
+
+  /*
+    An instance of ImageUploader will be rendered for every locale. Instead of
+    creating a new asset for each ImageUploader instance, we need to find out an existing
+    Asset reference potentially created by another locale.
+
+    ```
+    findExistingAssetReference() { value: ReferenceEntity, locale: string, isDefault: boolean } | null
+    ```
+   */
+  findExistingAssetReference = () => {
+    const allReferenceValues = this.getOtherLocales().filter(
+      reference => reference.value
+    )
+    if (allReferenceValues.length === 0) {
+      return null
+    }
+
+    // If only one reference values found, return that
+    if (allReferenceValues.length === 1) {
+      return allReferenceValues[0]
+    }
+
+    // If there are more than one reference value, it means there is more than 2 locales and min. two locales
+    // already points to a reference. In this case, we prioritize the default locale value.
+    const defaultReferenceValue = allReferenceValues.filter(
+      reference => reference.isDefault
+    )[0]
+    if (defaultReferenceValue) {
+      return defaultReferenceValue
+    }
+
+    // If default locale hasn't been set yet, just return the first reference value
+    return allReferenceValues[0]
+  }
+
+  /*
+    Iterate over all locales under the container of the localized fields, map their values to
+    an array and filter the current locale.
+
+    ```
+    getOtherLocales() { value: ReferenceEntity, locale: string, isDefault: boolean }[]
+    ```
+  */
+  getOtherLocales = () => {
+    const currentField = this.props.sdk.field
+
+    // Root field refers to the container of all localized instances of ImageUploader.
+    const rootField = this.props.sdk.entry.fields[currentField.id]
+
+    return rootField.locales
+      .map(locale => {
+        return {
+          value: rootField.getValue(locale),
+          isDefault: locale === this.props.sdk.locales.default,
+          locale
+        }
+      })
+      .filter(field => field.locale !== currentField.locale)
+  }
+
+  /*
+    Does this instance point to the default locale of the container field ?
+
+    ```
+    isDefaultLocale() boolean
+    ```
+  */
+  isDefaultLocale = () => {
+    const currentField = this.props.sdk.field
+    return this.props.sdk.field.locale === this.props.sdk.locales.default
+  }
+
+  /*
+    Take an asset object, set its required localized file and upload fields. It's used by
+    `createAsset` and `createOrUpdateAsset` methods.
+
+    ```
+    setAssetUpload(asset: AssetEntity, locale: string, file: HTML5File, upload: UploadEntity): AssetEntity
+    ```
+   */
+  setAssetUpload = (asset, upload, file, locale) => {
+    const copy = {
+      ...asset
+    }
+
+    copy.fields.title[locale] = trimFilename(file.name, MAX_ASSET_TITLE_LEN)
+    copy.fields.description[locale] = ""
+    copy.fields.file[locale] = {
+      contentType: file.type,
+      fileName: file.name,
+      uploadFrom: {
+        sys: {
+          type: "Link",
+          linkType: "Upload",
+          id: upload.sys.id
+        }
+      }
+    }
+
+    return copy
+  }
+
+  /* Take an HTML5 File object
      that contains the image user selected and performs following tasks;
 
       * Encode file as a base64 url
@@ -156,6 +270,10 @@ class App extends React.Component {
       * Send a request to start processing the asset
       * Wait until the asset is processed
       * Publish the asset
+
+     ```
+     uploadNewAsset(file: File): void
+     ```
   */
   uploadNewAsset = async file => {
     this.setUploadProgress(0)
@@ -172,7 +290,7 @@ class App extends React.Component {
 
     // Create an unprocessed asset record that links to the upload record created above
     // It reads asset title and filenames from the HTML5 File object we're passing as second parameter
-    const rawAsset = await this.createAsset(upload, file)
+    const rawAsset = await this.createOrUpdateAsset(upload, file)
     this.setUploadProgress(50)
 
     // Send a request to start processing the asset. This will happen asynchronously.
@@ -191,14 +309,24 @@ class App extends React.Component {
     this.setUploadProgress(85)
 
     // Publish the asset
-    const publishedAsset = await this.props.sdk.space.publishAsset(
-      processedAsset
-    )
-    this.setUploadProgress(95)
+    try {
+      const publishedAsset = await this.props.sdk.space.publishAsset(
+        processedAsset
+      )
+      this.setState({
+        asset: publishedAsset
+      })
+    } catch (err) {
+      this.onError(
+        new Error("We were not able to publish this asset at this time.")
+      )
 
-    this.setState({
-      asset: publishedAsset
-    })
+      this.setState({
+        asset: processedAsset
+      })
+    }
+
+    this.setUploadProgress(95)
 
     // Set the value of the reference field as a link to the asset created above
     await this.props.sdk.field.setValue({
