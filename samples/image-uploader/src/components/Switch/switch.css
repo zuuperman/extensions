@@ -1,0 +1,36 @@
+.switch-field {
+  display: flex;
+}
+
+.switch-field .check {
+  width: 35px;
+  height: 21px;
+  background: #d6dce4;
+  border-radius: 21px;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  margin-right: 0.5rem;
+}
+
+.switch-field .check.checked {
+  background: #4a90e2;
+}
+
+.switch-field .check:before {
+  position: absolute;
+  content: "";
+  width: 17px;
+  height: 17px;
+  left: 2px;
+  top: 2px;
+  background: #fff;
+  -webkit-transition: 0.1s;
+  transition: 0.1s;
+  border-radius: 50%;
+}
+
+.switch-field .check.checked:before {
+  left: auto;
+  right: 2px;
+}

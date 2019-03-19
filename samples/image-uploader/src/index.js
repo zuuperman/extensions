@@ -10,7 +10,8 @@ import debounce from "debounce-fn"
 import UploadView from "./components/UploadView"
 import ProgressView from "./components/ProgressView"
 import FileView from "./components/FileView"
-import Dropzone from "./components/Dropzone"
+import Switch from "./components/Switch"
+
 import { readFileAsURL, trimFilename } from "./utils"
 import { MAX_ASSET_TITLE_LEN } from "./config"
 
@@ -21,8 +22,8 @@ class App extends React.Component {
     sdk: PropTypes.object.isRequired
   }
 
-  dropzoneEl = React.createRef()
   state = {
+    applyToAllLocales: true,
     isDraggingOver: false,
     value: this.props.sdk.field.getValue()
   }
@@ -89,6 +90,12 @@ class App extends React.Component {
     } else {
       this.props.sdk.field.removeValue()
     }
+  }
+
+  onChangeApplyToAllLocales = value => {
+    this.setState({
+      applyToAllLocales: value
+    })
   }
 
   onClickEdit = () => {
@@ -456,7 +463,23 @@ class App extends React.Component {
       .catch(this.onError)
   }
 
-  render = () => {
+  render() {
+    return (
+      <main className="">
+        {this.renderContainer()}
+        {this.isDefaultLocale() ? (
+          <Switch
+            checked={this.state.applyToAllLocales}
+            onChange={this.onChangeApplyToAllLocales}
+          >
+            Apply changes to all locales
+          </Switch>
+        ) : null}
+      </main>
+    )
+  }
+
+  renderContainer = () => {
     if (this.state.uploading) {
       return (
         <ProgressView

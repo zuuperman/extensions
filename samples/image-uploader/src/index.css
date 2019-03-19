@@ -25,6 +25,7 @@ div {
 }
 
 .viewport {
+  margin-bottom: 1rem;
   position: relative;
   height: 20rem;
 }
