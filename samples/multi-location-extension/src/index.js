@@ -53,7 +53,7 @@ class App extends React.Component {
   openDialog = () => {
     this.props.sdk.dialogs.openExtension({
       id: "multi-location-extension",
-      title: "Foo"
+      title: "Custom Dialogs"
     })
   }
 
@@ -71,7 +71,7 @@ class App extends React.Component {
         </Button>
 
         <Paragraph style={{ marginTop: "2%" }} element="p">
-          This text is show, because this extension was assigned to a field of
+          This text is shown, because this extension was assigned to a field of
           an entry.
         </Paragraph>
       </div>
@@ -92,7 +92,7 @@ class App extends React.Component {
         </Button>
 
         <Paragraph style={{ marginTop: "5%" }} element="p">
-          This text is show, because this extension was assigned to the sidebar
+          This text is shown, because this extension was assigned to the sidebar
           of an entry.
         </Paragraph>
       </div>
@@ -114,7 +114,7 @@ class App extends React.Component {
         </Button> */}
 
         <Paragraph style={{ margin: "5%" }} element="p">
-          This text is show, because this extension is rendered in a dialog.
+          This text is shown, because this extension is rendered in a dialog.
         </Paragraph>
       </div>
     )
