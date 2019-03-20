@@ -1,0 +1,8 @@
+{
+  "id": "multi-location-extension",
+  "name": "multi-location-extension",
+  "srcdoc": "./build/index.html",
+  "fieldTypes": [
+    "Symbol"
+  ]
+}
