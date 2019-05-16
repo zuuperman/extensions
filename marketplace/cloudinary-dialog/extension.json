@@ -1,0 +1,20 @@
+{
+  "id": "cloudinary-dialog",
+  "name": "cloudinary-dialog",
+  "srcdoc": "./build/index.html",
+  "fieldTypes": ["Object"],
+  "parameters": {
+    "instance": [
+      {
+        "id": "cloudName",
+        "name": "Cloudinary Cloud Name",
+        "type": "Symbol"
+      },
+      {
+        "id": "apiKey",
+        "name": "Cloudinary API Key",
+        "type": "Symbol"
+      }
+    ]
+  }
+}

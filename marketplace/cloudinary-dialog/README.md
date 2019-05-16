@@ -1,0 +1,5 @@
+## Cloudinary Dialog
+
+## Functionality
+
+## Requirements
